@@ -35,13 +35,32 @@ struct ContentView: View {
                     CameraView(session: cameraVM.session)
                         .ignoresSafeArea()
                     
-                    Text(cameraVM.result)
-                        .padding()
-                        .background(Color.black.opacity(0.7))
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
+                    GeometryReader { geometry in
+                        ForEach(cameraVM.faceBoxes, id: \.self) { box in
+                            
+                            let rect = VNImageRectForNormalizedRect(
+                                box,
+                                Int(geometry.size.width),
+                                Int(geometry.size.height)
+                            )
+                            
+                            let correctedRect = CGRect(
+                                x: rect.origin.x,
+                                y: geometry.size.height - rect.origin.y - rect.height,
+                                width: rect.width,
+                                height: rect.height
+                            )
+                            
+                            Rectangle()
+                                .stroke(Color.green, lineWidth: 3)
+                                .frame(width: correctedRect.width, height: correctedRect.height)
+                                .position(
+                                    x: correctedRect.midX,
+                                    y: correctedRect.midY
+                                )
+                        }
+                    }
                 }
-                
             } else {
                 VStack(spacing: 20) {
                     

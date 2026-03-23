@@ -10,9 +10,11 @@ import AVFoundation
 import Vision
 import CoreML
 import UIKit
+import Vision
 
 class CameraViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     @Published var result: String = "Scanning..."
+    @Published var faceBoxes: [CGRect] = []
     private var recentPredictions: [String] = []
     private var lastPredictionTime = Date()
     
@@ -45,14 +47,28 @@ class CameraViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
         
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         
-        let now = Date()
+        detectFaces(pixelBuffer)
         
-        // 🔥 Throttle: run every 0.5 seconds
-        guard now.timeIntervalSince(lastPredictionTime) > 0.5 else { return }
+    }
+    
+    func detectFaces(_ pixelBuffer: CVPixelBuffer) {
         
-        lastPredictionTime = now
+        let request = VNDetectFaceRectanglesRequest { request, error in
+            
+            guard let observations = request.results as? [VNFaceObservation] else { return }
+            
+            let boxes = observations.map { observation -> CGRect in
+                return observation.boundingBox
+            }
+            
+            DispatchQueue.main.async {
+                self.faceBoxes = boxes
+            }
+        }
         
-        classifyFrame(pixelBuffer)
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up)
+        
+        try? handler.perform([request])
     }
     
     
