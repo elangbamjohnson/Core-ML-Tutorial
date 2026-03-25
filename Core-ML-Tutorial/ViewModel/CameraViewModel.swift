@@ -39,6 +39,11 @@ class CameraViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
     
     private var recentPredictions: [String] = []
     private var lastPredictionTime = Date()
+    private let speechSynthesizer = AVSpeechSynthesizer()
+    private var lastSpokenText: String?
+    private var lastSpokenTime = Date()
+    private let speechInterval: TimeInterval = 2.0
+    
     
     var currentPixelBuffer: CVPixelBuffer?
     
@@ -197,6 +202,8 @@ class CameraViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
         
         let name = recognizeFace(image)
         
+        print("Recognized: \(name)")
+        
         DispatchQueue.main.async {
             if name == "Unknown" {
                 // ❌ New user
@@ -206,14 +213,19 @@ class CameraViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
                 self.recognizedName = "New Face Detected"
                 self.showRecognitionBanner = true
                 
+                // 🔥 Voice feedback
+                self.speak("Face not recognized. Please register.")
+                
             } else {
                 // ✅ Known user
-                self.recognizedName = "\(name) marked present ✅"
+                self.recognizedName = "\(name) marked present"
                 self.showRecognitionBanner = true
                 
                 self.markAttendance(name: name)
                 
-                // Auto hide after 2 sec
+                // 🔥 Voice feedback
+                self.speak("Welcome \(name)")
+                
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                     self.showRecognitionBanner = false
                 }
@@ -431,6 +443,31 @@ class CameraViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
             print("Embedding error: \(error)")
             return nil
         }
+    }
+    
+    func speak(_ text: String) {
+        
+        let now = Date()
+        
+        // 🔥 Prevent same text repetition
+        if text == lastSpokenText &&
+           now.timeIntervalSince(lastSpokenTime) < speechInterval {
+            return
+        }
+        
+        lastSpokenText = text
+        lastSpokenTime = now
+        
+        // 🔥 Stop current speech safely
+        if speechSynthesizer.isSpeaking {
+            speechSynthesizer.stopSpeaking(at: .immediate)
+        }
+        
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.rate = 0.5
+        
+        speechSynthesizer.speak(utterance)
     }
     
 }
