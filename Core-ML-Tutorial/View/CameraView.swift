@@ -19,8 +19,24 @@ struct CameraView: UIViewRepresentable {
         let previewLayer = AVCaptureVideoPreviewLayer(session: session)
         previewLayer.videoGravity = .resizeAspect
         previewLayer.frame = UIScreen.main.bounds
+       
+        if let connection = previewLayer.connection {
+//            connection.isVideoMirrored = true
+            if let connection = previewLayer.connection {
+                if connection.isVideoMirroringSupported {
+                    connection.automaticallyAdjustsVideoMirroring = false // 🔥 disable auto
+                    connection.isVideoMirrored = true                     // 🔥 then set manually
+                }
+            }
+        }
         
         view.layer.addSublayer(previewLayer)
+        
+        // 🔥 CRITICAL FIX
+        previewLayer.isGeometryFlipped = false
+        
+        // 🔥 Ensure camera does NOT block touches
+        view.isUserInteractionEnabled = false
         
         return view
     }
