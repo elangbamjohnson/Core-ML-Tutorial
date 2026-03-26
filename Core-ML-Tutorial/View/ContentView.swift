@@ -47,7 +47,7 @@ struct ContentView: View {
                         }
                     }
                     
-                    CameraView(session: cameraVM.session)
+                    CameraView(session: cameraVM.cameraSession)
                         .ignoresSafeArea()
                     
                     GeometryReader { geometry in
