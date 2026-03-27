@@ -1,1 +1,7 @@
-Core-ML-Tutorial/Core ML tutorial.xcodeproj/project.xcworkspace/xcuserdata/johnson.xcuserdatad/UserInterfaceState.xcuserstate
+# Xcode
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+DerivedData/
+build/
