@@ -23,11 +23,9 @@ class FaceRecognitionService {
     
     // MARK: - Public API
     
-    func recognizeFace(_ image: UIImage, from people: [Person]) -> String {
-        
-        guard let embedding = getEmbedding(from: image) else {
-            return "Unknown"
-        }
+
+    
+    func recognizeFace(_ embedding: [Float], from people: [Person]) -> String {
         
         var bestMatch = "Unknown"
         var bestScore: Float = -1
@@ -35,15 +33,11 @@ class FaceRecognitionService {
         for person in people {
             let score = cosineSimilarity(embedding, person.embedding)
             
-            print("Comparing with \(person.name), score: \(score)")
-            
             if score > bestScore {
                 bestScore = score
                 bestMatch = person.name
             }
         }
-        
-        print("Best score:", bestScore)
         
         return bestScore > 0.6 ? bestMatch : "Unknown"
     }
