@@ -10,6 +10,7 @@ import UIKit
 
 class StorageService: ObservableObject {
     
+    @Published private(set) var attendanceRecords: [AttendanceRecord] = []
     @Published private(set) var savedFaces: [Person] = [] {
         didSet {
             persistMetadata()

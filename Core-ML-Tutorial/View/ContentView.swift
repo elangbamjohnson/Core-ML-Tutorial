@@ -178,6 +178,39 @@ struct ContentView: View {
             }
             .padding()
         }
+        
+        .sheet(isPresented: $cameraVM.showResultSheet) {
+            
+            VStack(spacing: 20) {
+                
+                Text("Attendance Marked")
+                    .font(.title2)
+                    .bold()
+                
+                if let person = cameraVM.recognizedPerson,
+                   let image = cameraVM.getImage(for: person) {
+                    
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 200)
+                        .cornerRadius(12)
+                }
+                
+                Text(cameraVM.recognizedPerson?.name ?? "")
+                    .font(.title)
+                
+                Text("Marked Present ✅")
+                    .foregroundColor(.green)
+                
+                Button("OK") {
+                    cameraVM.dismissResult()
+                }
+                .buttonStyle(.borderedProminent)
+                .padding(.top, 20)
+            }
+            .padding()
+        }
     }
     
     // MARK: - Image Mode

@@ -25,6 +25,8 @@ class CameraViewModel: NSObject, ObservableObject {
     @Published var recognizedName: String = ""
     @Published var showRecognitionBanner: Bool = false
     @Published var detectedFaces: [DetectedFace] = []
+    @Published var showResultSheet: Bool = false
+    @Published var recognizedPerson: Person?
     
     
     private let faceRecognitionService = FaceRecognitionService()
@@ -37,10 +39,14 @@ class CameraViewModel: NSObject, ObservableObject {
     private var recentPredictions: [String] = []
     private let predictionWindow = 5
     private var lastRecognizedName: String?
-    private let recognitionCooldown: TimeInterval = 3.0
+    private let recognitionCooldown: TimeInterval = 5.0
     private var lastFrameProcessTime = Date()
     private let frameInterval: TimeInterval = 0.5
     private var isCameraRunning = false
+    private var isProcessingRecognition = false
+    private var lastAttendanceTime: [String: Date] = [:]
+    private let attendanceWindow: TimeInterval = 5 // 5 sec
+    
     
     var currentPixelBuffer: CVPixelBuffer?
     var cameraSession: AVCaptureSession {
@@ -50,11 +56,13 @@ class CameraViewModel: NSObject, ObservableObject {
     override init() {
         super.init()
         setupBindings()
-//        cameraService.startSession()
         storageService.loadSavedFaces()
     }
     
     private func setupBindings() {
+        if self.isProcessingRecognition {
+            return
+        }
         
         cameraService.onFrameCaptured = { [weak self] pixelBuffer in
             guard let self = self else { return }
@@ -271,34 +279,68 @@ class CameraViewModel: NSObject, ObservableObject {
     
     func handleStableRecognition(_ name: String, image: UIImage) {
         
+        // 🚫 Prevent multiple triggers
+        guard !isProcessingRecognition else { return }
+        
+        let now = Date()
+        
+        // ✅ TIME-BASED ATTENDANCE WINDOW
+        if let lastTime = lastAttendanceTime[name],
+//           Calendar.current.isDate(lastTime, inSameDayAs: now) {
+            now.timeIntervalSince(lastTime) < attendanceWindow {
+            
+            print("🚫 \(name) already marked within time window")
+            return
+        }
+        
+        isProcessingRecognition = true
+        
         DispatchQueue.main.async {
             
             if name == "Unknown" && self.capturedFace == nil {
                 
+                // New user flow (unchanged)
                 self.capturedFace = image
                 self.showNameInput = true
                 
-                self.recognizedName = "New Face Detected"
-                self.showRecognitionBanner = true
-                
                 self.speechService.speak("Face not recognized. Please register.")
+                
+                self.isProcessingRecognition = false
                 
             } else {
                 
-                self.recognizedName = "\(name) marked present"
-                self.showRecognitionBanner = true
+                // ✅ Find matched person
+                guard let person = self.storageService.savedFaces.first(where: { $0.name == name }) else {
+                    self.isProcessingRecognition = false
+                    return
+                }
                 
+                // ✅ Mark attendance
                 self.markAttendance(name: name)
                 
-                self.speechService.speak("Welcome \(name)")
+                // ✅ SAVE TIME
+                self.lastAttendanceTime[name] = now
                 
-                // Reset after delay (ready for next person)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    self.showRecognitionBanner = false
-                    self.resetRecognitionState()
-                }
+                // ✅ Show result UI
+                self.recognizedPerson = person
+                self.showResultSheet = true
+                
+                // 🔊 Speak ONCE
+                self.speechService.speak("Welcome \(name)")
             }
         }
+    }
+    
+    func dismissResult() {
+        showResultSheet = false
+        recognizedPerson = nil
+        // 🔥 Reset pipeline
+        resetRecognitionState()
+        isProcessingRecognition = false
+    }
+    
+    func getImage(for person: Person) -> UIImage? {
+        storageService.loadImage(for: person)
     }
     
     func resetRecognitionState() {
